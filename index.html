@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Treasure Round — Live Plunder Tracker</title>
+<link rel="icon" type="image/png" href="/Vibe_roger.png">
+<link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=IM+Fell+English:ital@0;1&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0a05;
+    --ocean: #0a1628;
+    --plank: #1a1208;
+    --gold: #d4a017;
+    --gold-bright: #f5c842;
+    --gold-glow: rgba(212,160,23,0.35);
+    --red: #8b1a1a;
+    --red-bright: #c0392b;
+    --parchment: #c8a96e;
+    --parchment-dim: #7a6040;
+    --text: #e8d5a3;
+    --muted: #6b5535;
+    --border: #2e2010;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IM Fell English', serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ocean texture bg */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 120% 60% at 50% 100%, #0a1628 0%, transparent 70%),
+      radial-gradient(ellipse 80% 40% at 20% 80%, #0d1f3c 0%, transparent 60%),
+      radial-gradient(ellipse 60% 30% at 80% 70%, #0a1628 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* wood grain overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      92deg,
+      transparent,
+      transparent 3px,
+      rgba(0,0,0,0.06) 3px,
+      rgba(0,0,0,0.06) 4px
+    ), repeating-linear-gradient(
+      180deg,
+      transparent,
+      transparent 40px,
+      rgba(212,160,23,0.015) 40px,
+      rgba(212,160,23,0.015) 41px
+    );
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.7;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 700px;
+    padding: 40px 32px 36px;
+    position: relative;
+    z-index: 1;
+    border: 1px solid #2e2010;
+    border-image: repeating-linear-gradient(
+      180deg,
+      #3d2a0e 0px, #3d2a0e 2px,
+      #1a1208 2px, #1a1208 8px
+    ) 1;
+    background: rgba(13,10,5,0.85);
+    box-shadow:
+      inset 0 0 60px rgba(0,0,0,0.6),
+      0 0 40px rgba(212,160,23,0.08),
+      0 20px 60px rgba(0,0,0,0.8);
+  }
+
+  /* decorative corner skulls */
+  .corner {
+    position: absolute;
+    font-size: 22px;
+    opacity: 0.25;
+    line-height: 1;
+  }
+  .corner.tl { top: 10px; left: 14px; }
+  .corner.tr { top: 10px; right: 14px; }
+  .corner.bl { bottom: 10px; left: 14px; }
+  .corner.br { bottom: 10px; right: 14px; }
+
+  /* eyebrow */
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: '⚓';
+    font-size: 13px;
+    animation: sway 3s ease-in-out infinite;
+    display: inline-block;
+  }
+  @keyframes sway {
+    0%, 100% { transform: rotate(-8deg); }
+    50% { transform: rotate(8deg); }
+  }
+
+  /* divider rope */
+  .rope {
+    width: 100%;
+    height: 8px;
+    background: repeating-linear-gradient(
+      90deg,
+      #3d2a0e 0px, #5a3e18 4px,
+      #3d2a0e 8px, #2e2010 12px
+    );
+    border-radius: 4px;
+    opacity: 0.5;
+    margin: 20px 0;
+  }
+
+  /* badge */
+  .pct-badge {
+    font-family: 'Pirata One', cursive;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    background: var(--red);
+    color: var(--gold-bright);
+    padding: 4px 14px 3px;
+    display: inline-block;
+    margin-bottom: 12px;
+    border: 1px solid var(--red-bright);
+    clip-path: polygon(6px 0%, calc(100% - 6px) 0%, 100% 50%, calc(100% - 6px) 100%, 6px 100%, 0% 50%);
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  /* main number */
+  .amount-display {
+    font-family: 'Pirata One', cursive;
+    font-size: clamp(72px, 18vw, 128px);
+    line-height: 0.88;
+    letter-spacing: 0.02em;
+    color: var(--gold-bright);
+    margin-bottom: 4px;
+    text-shadow:
+      0 0 30px var(--gold-glow),
+      0 0 60px rgba(212,160,23,0.15),
+      2px 2px 0px rgba(0,0,0,0.8);
+    position: relative;
+  }
+  .amount-display .dollar {
+    font-size: 0.55em;
+    vertical-align: top;
+    margin-top: 0.12em;
+    display: inline-block;
+    color: var(--gold);
+  }
+
+  .total-label {
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--parchment-dim);
+    letter-spacing: 0.05em;
+    margin-bottom: 32px;
+  }
+  .total-label strong {
+    color: var(--parchment);
+    font-style: normal;
+  }
+
+  /* TREASURE CHEST progress bar */
+  .progress-section {
+    margin-bottom: 36px;
+  }
+
+  .progress-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .progress-heading {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .progress-track {
+    height: 18px;
+    background: #0d0a05;
+    border: 1px solid #3d2a0e;
+    border-radius: 2px;
+    overflow: visible;
+    position: relative;
+    margin-bottom: 10px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.8);
+  }
+
+  /* wooden slats on the track */
+  .progress-track::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 24px,
+      rgba(0,0,0,0.3) 24px,
+      rgba(0,0,0,0.3) 25px
+    );
+    z-index: 2;
+    pointer-events: none;
+    border-radius: 2px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #8b5e00, #d4a017 40%, #f5c842 70%, #d4a017);
+    position: relative;
+    transition: width 2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 16px var(--gold-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+
+  /* coin at the tip */
+  .progress-fill::after {
+    content: '🪙';
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 22px;
+    filter: drop-shadow(0 0 8px var(--gold));
+    animation: coinSpin 2s linear infinite;
+    z-index: 3;
+  }
+  @keyframes coinSpin {
+    0% { transform: translateY(-50%) rotateY(0deg); }
+    100% { transform: translateY(-50%) rotateY(360deg); }
+  }
+
+  .milestones {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+  }
+
+  /* stats */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+
+  .stat {
+    padding: 16px 14px;
+    background: var(--plank);
+    border: 1px solid #2e2010;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.4;
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Pirata One', cursive;
+    font-size: 30px;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: var(--text);
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.8);
+  }
+
+  .stat-value.gold { color: var(--gold-bright); text-shadow: 0 0 12px var(--gold-glow); }
+  .stat-value.blood { color: #e05252; }
+
+  /* countdown */
+  .countdown-section {
+    margin-bottom: 32px;
+  }
+
+  .countdown-heading {
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .countdown-heading::before, .countdown-heading::after {
+    content: '— ';
+    color: var(--border);
+  }
+  .countdown-heading::after { content: ' —'; }
+
+  .countdown-units {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  .unit-block {
+    background: var(--ocean);
+    border: 1px solid #1e3a5f;
+    padding: 10px 8px 8px;
+    text-align: center;
+    position: relative;
+  }
+
+  .unit-block::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(100,160,255,0.05);
+    pointer-events: none;
+  }
+
+  .unit-number {
+    font-family: 'Pirata One', cursive;
+    font-size: 30px;
+    line-height: 1;
+    color: #e05252;
+    text-shadow: 0 0 14px rgba(224,82,82,0.5);
+  }
+
+  .unit-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 7px;
+    color: #2a4a6a;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .urgent .unit-number {
+    animation: redFlash 0.8s ease-in-out infinite;
+  }
+  @keyframes redFlash {
+    0%, 100% { color: #e05252; text-shadow: 0 0 14px rgba(224,82,82,0.6); }
+    50% { color: rgba(224,82,82,0.3); text-shadow: none; }
+  }
+
+  /* footer */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-top: 18px;
+    border-top: 1px solid #2e2010;
+  }
+
+  .company-name {
+    font-family: 'Pirata One', cursive;
+    font-size: 20px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+
+  .timestamp {
+    font-family: 'DM Mono', monospace;
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-align: right;
+    opacity: 0.7;
+  }
+
+  /* skull flag decoration */
+  .skull-banner {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 6px;
+    opacity: 0.6;
+    letter-spacing: 8px;
+  }
+
+  /* entrance animations */
+  @keyframes riseUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .container > * {
+    animation: riseUp 0.7s ease forwards;
+    opacity: 0;
+  }
+  .container > *:nth-child(1) { animation-delay: 0.05s; }
+  .container > *:nth-child(2) { animation-delay: 0.1s; }
+  .container > *:nth-child(3) { animation-delay: 0.18s; }
+  .container > *:nth-child(4) { animation-delay: 0.24s; }
+  .container > *:nth-child(5) { animation-delay: 0.3s; }
+  .container > *:nth-child(6) { animation-delay: 0.36s; }
+  .container > *:nth-child(7) { animation-delay: 0.42s; }
+  .container > *:nth-child(8) { animation-delay: 0.48s; }
+  .corner { animation: none; opacity: 0.25; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <span class="corner tl">☠</span>
+  <span class="corner tr">☠</span>
+  <span class="corner bl">☠</span>
+  <span class="corner br">☠</span>
+
+  <div class="skull-banner">⚔️ ☠ ⚔️</div>
+
+  <div class="eyebrow">Live Plunder Tracker &nbsp;·&nbsp; Seed Round</div>
+
+  <div>
+    <div class="pct-badge" id="pct-badge">0% OF THE BOOTY</div>
+    <div class="amount-display"><span class="dollar">$</span><span id="raised-display">0</span></div>
+    <div class="total-label">plundered of <strong id="goal-label">$500,000</strong> treasure</div>
+  </div>
+
+  <div class="rope"></div>
+
+  <div class="progress-section">
+    <div class="progress-label-row">
+      <span class="progress-heading">⚓ &nbsp; Chest Filling</span>
+      <span class="progress-heading" id="pct-inline">0% Full</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+    </div>
+    <div class="milestones">
+      <span>Dead Broke</span>
+      <span>$125K</span>
+      <span>Half Full</span>
+      <span>$375K</span>
+      <span>Full Haul</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Chest Full</div>
+      <div class="stat-value gold" id="pct-stat">0%</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Still Buried</div>
+      <div class="stat-value" id="remaining-stat">$500K</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Tides Left</div>
+      <div class="stat-value blood" id="days-stat">—</div>
+    </div>
+  </div>
+
+  <div class="countdown-section" id="countdown-section">
+    <div class="countdown-heading">The ship sails at midnight</div>
+    <div class="countdown-units" id="countdown-units">
+      <div class="unit-block"><div class="unit-number" id="cd-days">--</div><div class="unit-label">Days</div></div>
+      <div class="unit-block"><div class="unit-number" id="cd-hours">--</div><div class="unit-label">Hours</div></div>
+      <div class="unit-block"><div class="unit-number" id="cd-mins">--</div><div class="unit-label">Mins</div></div>
+      <div class="unit-block"><div class="unit-number" id="cd-secs">--</div><div class="unit-label">Secs</div></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="company-name" id="company-name">YOUR COMPANY</div>
+    <div class="timestamp" id="timestamp-el"></div>
+  </div>
+
+</div>
+
+<script>
+  // ─────────────────────────────────────────────
+  // ✏️  EDIT THESE FOUR LINES TO UPDATE YOUR RAISE
+  // ─────────────────────────────────────────────
+  const RAISED     = 120000;           // doubloons raised so far
+  const GOAL       = 500000;           // total treasure
+  const CLOSE_DATE = "2026-05-28";     // when the ship sails: YYYY-MM-DD
+  const COMPANY    = "THE VIBE TECH";   // your crew's name
+  // ─────────────────────────────────────────────
+
+  // also supports URL params: ?raised=250000&close=2025-08-15&company=Acme
+  const params   = new URLSearchParams(window.location.search);
+  const raised    = parseInt(params.get("raised")  || RAISED);
+  const goal      = parseInt(params.get("goal")    || GOAL);
+  const closeDate = params.get("close")   || CLOSE_DATE;
+  const company   = params.get("company") || COMPANY;
+
+  const pct       = Math.min(100, (raised / goal) * 100);
+  const remaining = goal - raised;
+
+  function fmt(n) {
+    if (n >= 1000000) return "$" + (n/1000000).toFixed(1).replace(/\.0$/,'') + "M";
+    if (n >= 1000)    return "$" + (n/1000).toFixed(0) + "K";
+    return "$" + n.toLocaleString();
+  }
+
+  function countUp(el, target, duration = 1600) {
+    const start = performance.now();
+    const tick = (now) => {
+      const t = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      el.textContent = Math.floor(ease * target).toLocaleString();
+      if (t < 1) requestAnimationFrame(tick);
+      else el.textContent = target.toLocaleString();
+    };
+    requestAnimationFrame(tick);
+  }
+
+  function updateCountdown() {
+    const end  = new Date(closeDate + "T23:59:59").getTime();
+    const now  = Date.now();
+    const diff = end - now;
+
+    if (diff <= 0) {
+      document.getElementById('countdown-section').style.display = 'none';
+      document.getElementById('days-stat').textContent = "SAILED";
+      return;
+    }
+
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+
+    document.getElementById('cd-days').textContent  = String(d).padStart(2,'0');
+    document.getElementById('cd-hours').textContent = String(h).padStart(2,'0');
+    document.getElementById('cd-mins').textContent  = String(m).padStart(2,'0');
+    document.getElementById('cd-secs').textContent  = String(s).padStart(2,'0');
+    document.getElementById('days-stat').textContent = d + "d";
+
+    if (d < 5) document.getElementById('countdown-units').classList.add('urgent');
+  }
+
+  // timestamp
+  const now = new Date();
+  document.getElementById('timestamp-el').innerHTML =
+    "Last sighting: " + now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) +
+    "<br>" + now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+
+  // render static values
+  document.getElementById('company-name').textContent = company;
+  document.getElementById('goal-label').textContent   = fmt(goal);
+  document.getElementById('pct-badge').textContent    = Math.round(pct) + "% OF THE BOOTY";
+  document.getElementById('pct-stat').textContent     = Math.round(pct) + "%";
+  document.getElementById('pct-inline').textContent   = Math.round(pct) + "% Full";
+  document.getElementById('remaining-stat').textContent = fmt(remaining);
+
+  // animate in
+  setTimeout(() => {
+    document.getElementById('progress-fill').style.width = pct + "%";
+    countUp(document.getElementById('raised-display'), raised, 1800);
+  }, 600);
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+</script>
+</body>
+</html>
